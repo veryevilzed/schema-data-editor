@@ -18,12 +18,23 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { ConfirmDialog } from './ui/dialog';
 import { Input, Select } from './ui/input';
+import { Paperclip } from 'lucide-react';
 import { useProjectStore } from '@/store/project-store';
 import { EmptyState } from './EmptyState';
 import { DataForm } from './DataForm';
 import { DataDetail } from './DataDetail';
-import type { AppDocument, Field, ID, RelationField } from '@shared/schema';
+import { ImageThumb } from './ImagePreview';
+import type {
+  AppDocument,
+  AttachmentValue,
+  Field,
+  FileField,
+  ID,
+  ImageField,
+  RelationField,
+} from '@shared/schema';
 import { cn, formatId, relationLabel } from '@/lib/utils';
+import { formatBytes, useAttachmentUrl } from '@/lib/attachments';
 import { useI18n } from '@/i18n/provider';
 
 type Mode =
@@ -589,6 +600,16 @@ function matchesFilter(
       if (ids.length === 0) return false;
       return ids.some((id) => labelOf(id).toLowerCase().includes(q));
     }
+    case 'file':
+    case 'image': {
+      if (!raw || typeof raw !== 'object') return false;
+      const v = raw as AttachmentValue;
+      const q = filter.toLowerCase();
+      return (
+        (v.name ?? '').toLowerCase().includes(q) ||
+        (v.mime ?? '').toLowerCase().includes(q)
+      );
+    }
     default: {
       if (raw === null || raw === undefined) return false;
       return String(raw).toLowerCase().includes(filter.toLowerCase());
@@ -657,6 +678,12 @@ function compareValues(
         return String(raw);
       };
       return labelOf(a).localeCompare(labelOf(b), undefined, { numeric: true });
+    }
+    case 'file':
+    case 'image': {
+      const an = (a as AttachmentValue | null)?.name ?? '';
+      const bn = (b as AttachmentValue | null)?.name ?? '';
+      return an.localeCompare(bn, undefined, { numeric: true });
     }
     default:
       return String(a).localeCompare(String(b), undefined, { numeric: true });
@@ -761,6 +788,12 @@ function CellValue({
   if (field?.type === 'relation') {
     return <RelationCellValue field={field} value={value} />;
   }
+  if (field?.type === 'image') {
+    return <ImageCellValue field={field} value={value as AttachmentValue | null} />;
+  }
+  if (field?.type === 'file') {
+    return <FileCellValue field={field} value={value as AttachmentValue | null} />;
+  }
   if (value === null || value === undefined || value === '') {
     return <span className="text-muted-foreground">—</span>;
   }
@@ -778,6 +811,42 @@ function CellValue({
     return <span className="text-xs text-muted-foreground">[{value.length}]</span>;
   }
   return <>{String(value)}</>;
+}
+
+function ImageCellValue({
+  field,
+  value,
+}: {
+  field: ImageField;
+  value: AttachmentValue | null | undefined;
+}) {
+  const url = useAttachmentUrl(value);
+  if (!value) return <span className="text-muted-foreground">—</span>;
+  return (
+    <div className="flex items-center gap-2">
+      <ImageThumb url={url} size={field.thumbnailSize ?? 'm'} alt={value.name} />
+      <span className="truncate text-xs text-muted-foreground">{value.name}</span>
+    </div>
+  );
+}
+
+function FileCellValue({
+  value,
+}: {
+  field: FileField;
+  value: AttachmentValue | null | undefined;
+}) {
+  if (!value) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={`${value.name} · ${formatBytes(value.size)} · ${value.mime || '—'}`}
+    >
+      <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="truncate font-medium">{value.name}</span>
+      <span className="text-xs text-muted-foreground">{formatBytes(value.size)}</span>
+    </span>
+  );
 }
 
 function RelationCellValue({

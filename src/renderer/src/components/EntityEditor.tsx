@@ -13,14 +13,18 @@ import {
 import { useI18n } from '@/i18n/provider';
 import {
   FIELD_TYPE_LABELS,
+  type AttachmentStorage,
   type DateField,
   type DatetimeField,
   type EnumField,
   type Field,
   type FieldType,
+  type FileField,
   type ID,
   type IdStrategy,
+  type ImageField,
   type RelationField,
+  type ThumbnailSize,
 } from '@shared/schema';
 
 const FIELD_TYPES = Object.keys(FIELD_TYPE_LABELS) as FieldType[];
@@ -204,6 +208,18 @@ function FieldRow({
                   case 'relation':
                     next = { ...base, type: 'relation', target: '', kind: 'one' };
                     break;
+                  case 'file':
+                    next = { ...base, type: 'file', storage: 'external' };
+                    break;
+                  case 'image':
+                    next = {
+                      ...base,
+                      type: 'image',
+                      storage: 'external',
+                      thumbnailSize: 'm',
+                      acceptMime: 'image/*',
+                    };
+                    break;
                   default:
                     next = { ...base, type: newType } as Field;
                 }
@@ -237,15 +253,18 @@ function FieldRow({
           />
           <span>{t('field.required')}</span>
         </label>
-        {field.type !== 'relation' && field.type !== 'boolean' && (
-          <label className="inline-flex items-center gap-2">
-            <Checkbox
-              checked={field.unique ?? false}
-              onChange={(e) => onPatch({ unique: e.target.checked })}
-            />
-            <span>{t('field.unique')}</span>
-          </label>
-        )}
+        {field.type !== 'relation' &&
+          field.type !== 'boolean' &&
+          field.type !== 'file' &&
+          field.type !== 'image' && (
+            <label className="inline-flex items-center gap-2">
+              <Checkbox
+                checked={field.unique ?? false}
+                onChange={(e) => onPatch({ unique: e.target.checked })}
+              />
+              <span>{t('field.unique')}</span>
+            </label>
+          )}
         <label
           className="inline-flex items-center gap-2"
           title={t('field.showInListHint')}
@@ -270,6 +289,15 @@ function FieldRow({
           field={field}
           entities={otherEntities}
           onChange={(patch) => onPatch(patch as Partial<RelationField>)}
+        />
+      )}
+
+      {(field.type === 'file' || field.type === 'image') && (
+        <AttachmentOptions
+          field={field}
+          onChange={(patch) =>
+            onPatch(patch as Partial<FileField> | Partial<ImageField>)
+          }
         />
       )}
 
@@ -389,6 +417,9 @@ function FieldDefaultEditor({
       );
     case 'relation':
       return <RelationDefaultEditor field={field} onPatch={onPatch} />;
+    case 'file':
+    case 'image':
+      return <div />;
   }
 }
 
@@ -752,5 +783,56 @@ function AddFieldDialog({
         </FormField>
       </div>
     </Dialog>
+  );
+}
+
+function AttachmentOptions({
+  field,
+  onChange,
+}: {
+  field: FileField | ImageField;
+  onChange: (patch: Partial<FileField> | Partial<ImageField>) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className="mt-3 grid gap-2 md:grid-cols-2">
+      <FormField label={t('attachment.storage')} hint={t('attachment.storageHint')}>
+        <Select
+          value={field.storage}
+          onChange={(e) =>
+            onChange({ storage: e.target.value as AttachmentStorage })
+          }
+        >
+          <option value="external">{t('attachment.storageExternal')}</option>
+          <option value="inline">{t('attachment.storageInline')}</option>
+        </Select>
+      </FormField>
+      {field.type === 'image' && (
+        <FormField label={t('attachment.thumbSize')}>
+          <Select
+            value={field.thumbnailSize ?? 'm'}
+            onChange={(e) =>
+              onChange({ thumbnailSize: e.target.value as ThumbnailSize })
+            }
+          >
+            <option value="s">{t('attachment.thumbS')}</option>
+            <option value="m">{t('attachment.thumbM')}</option>
+            <option value="b">{t('attachment.thumbB')}</option>
+          </Select>
+        </FormField>
+      )}
+      <FormField
+        label={t('attachment.acceptMime')}
+        className={field.type === 'image' ? 'md:col-span-2' : undefined}
+      >
+        <Input
+          value={field.acceptMime ?? ''}
+          placeholder={t('attachment.acceptMimePlaceholder')}
+          onChange={(e) =>
+            onChange({ acceptMime: e.target.value || undefined })
+          }
+        />
+      </FormField>
+    </div>
   );
 }

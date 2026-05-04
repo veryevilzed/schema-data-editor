@@ -22,6 +22,8 @@ const api: IpcApi = {
     ),
   getRecentProjects: () => ipcRenderer.invoke(IPC_CHANNELS.getRecentProjects),
   setTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.setTheme, theme),
+  readAttachment: (folderPath, schema, relPath) =>
+    ipcRenderer.invoke(IPC_CHANNELS.readAttachment, folderPath, schema, relPath),
 };
 
 contextBridge.exposeInMainWorld('api', api);

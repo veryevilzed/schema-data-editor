@@ -10,6 +10,7 @@ import type {
 
 const SCHEMA_FILE = 'schema.json';
 const SINGLE_JSON_FILE = 'data.json';
+const ATTACHMENTS_DIR = '_attachments';
 
 async function ensureDir(p: string): Promise<void> {
   await fs.mkdir(p, { recursive: true });
@@ -216,8 +217,15 @@ export async function migrateSchemaChange(
     for (const name of nextSchema.entityOrder) {
       await writeCollection(nextDir, nextSchema.storage.format, name, allData[name]);
     }
-    if (dirChanged && (await pathExists(prevDir))) {
-      await fs.rm(prevDir, { recursive: true, force: true });
+    if (dirChanged) {
+      const prevAttachments = path.join(prevDir, ATTACHMENTS_DIR);
+      if (await pathExists(prevAttachments)) {
+        const nextAttachments = path.join(nextDir, ATTACHMENTS_DIR);
+        await fs.cp(prevAttachments, nextAttachments, { recursive: true });
+      }
+      if (await pathExists(prevDir)) {
+        await fs.rm(prevDir, { recursive: true, force: true });
+      }
     } else if (formatChanged) {
       await cleanupOldFormat(prevDir, prevSchema.storage.format, prevSchema);
     }
@@ -225,9 +233,87 @@ export async function migrateSchemaChange(
     for (const oldName of prevSchema.entityOrder) {
       if (!nextSchema.entities[oldName]) {
         await deleteCollection(nextDir, nextSchema.storage.format, oldName);
+        await deleteEntityAttachments(nextDir, oldName);
       }
     }
   }
+}
+
+async function deleteEntityAttachments(
+  dataDir: string,
+  entityName: string,
+): Promise<void> {
+  const dir = path.join(dataDir, ATTACHMENTS_DIR, entityName);
+  await fs.rm(dir, { recursive: true, force: true });
+}
+
+function sanitizeAttachmentName(s: string): string {
+  const cleaned = s.replace(/[\/\\:*?"<>|\x00-\x1f]/g, '_').replace(/^\.+/, '_');
+  return cleaned.slice(0, 200) || 'file';
+}
+
+export async function writeAttachment(
+  projectPath: string,
+  schema: Schema,
+  entityName: string,
+  docId: ID,
+  fieldName: string,
+  base64Body: string,
+  fileName: string,
+): Promise<{ relPath: string; size: number }> {
+  const dataDir = dataDirOf(projectPath, schema);
+  const safeName = sanitizeAttachmentName(fileName);
+  const finalName = `${fieldName}__${safeName}`;
+  const relPath = path.posix.join(
+    ATTACHMENTS_DIR,
+    entityName,
+    String(docId),
+    finalName,
+  );
+  const absPath = path.join(dataDir, relPath);
+  await ensureDir(path.dirname(absPath));
+  const buf = Buffer.from(base64Body, 'base64');
+  await fs.writeFile(absPath, buf);
+  return { relPath, size: buf.byteLength };
+}
+
+export async function readAttachment(
+  projectPath: string,
+  schema: Schema,
+  relPath: string,
+): Promise<string> {
+  const absPath = path.join(dataDirOf(projectPath, schema), relPath);
+  const buf = await fs.readFile(absPath);
+  return buf.toString('base64');
+}
+
+export async function deleteAttachment(
+  projectPath: string,
+  schema: Schema,
+  relPath: string,
+): Promise<void> {
+  const absPath = path.join(dataDirOf(projectPath, schema), relPath);
+  await fs.unlink(absPath).catch(() => {});
+  const parent = path.dirname(absPath);
+  await fs.rmdir(parent).catch(() => {});
+  const grand = path.dirname(parent);
+  if (path.basename(grand) === ATTACHMENTS_DIR) return;
+  await fs.rmdir(grand).catch(() => {});
+}
+
+export async function deleteDocumentAttachments(
+  projectPath: string,
+  schema: Schema,
+  entityName: string,
+  docId: ID,
+): Promise<void> {
+  const dir = path.join(
+    dataDirOf(projectPath, schema),
+    ATTACHMENTS_DIR,
+    entityName,
+    String(docId),
+  );
+  await fs.rm(dir, { recursive: true, force: true });
 }
 
 async function deleteCollection(

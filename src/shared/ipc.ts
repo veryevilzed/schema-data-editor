@@ -27,6 +27,11 @@ export interface IpcApi {
   ): Promise<void>;
   getRecentProjects(): Promise<string[]>;
   setTheme(theme: 'light' | 'dark' | 'system'): Promise<void>;
+  readAttachment(
+    folderPath: string,
+    schema: Schema,
+    relPath: string,
+  ): Promise<string>;
 }
 
 export const IPC_CHANNELS = {
@@ -38,4 +43,5 @@ export const IPC_CHANNELS = {
   deleteDocument: 'project:delete-document',
   getRecentProjects: 'project:recent',
   setTheme: 'app:set-theme',
+  readAttachment: 'project:read-attachment',
 } as const;

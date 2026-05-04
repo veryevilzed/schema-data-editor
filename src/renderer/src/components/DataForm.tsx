@@ -1,14 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Paperclip, Save, Upload, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Checkbox, FormField, Input, Select, Textarea } from './ui/input';
 import { useProjectStore } from '@/store/project-store';
-import type { AppDocument, Field, ID, RelationField } from '@shared/schema';
+import type {
+  AppDocument,
+  AttachmentValue,
+  Field,
+  FileField,
+  ID,
+  ImageField,
+  RelationField,
+} from '@shared/schema';
 import {
   relationLabel,
   todayDateInput,
   toLocalDatetimeInput,
 } from '@/lib/utils';
+import { formatBytes, useAttachmentUrl } from '@/lib/attachments';
+import { ImageThumb } from './ImagePreview';
 import { useI18n } from '@/i18n/provider';
 
 type FormValues = Record<string, unknown>;
@@ -172,6 +182,9 @@ function defaultValueFor(field: Field): unknown {
       }
       if (Array.isArray(field.default)) return '';
       return field.default ?? '';
+    case 'file':
+    case 'image':
+      return null;
   }
 }
 
@@ -303,6 +316,17 @@ function FieldInput({
           <RelationPicker field={field} value={value} onChange={onChange} />
         </FormField>
       );
+    case 'file':
+    case 'image':
+      return (
+        <FormField label={label} hint={field.description} error={error}>
+          <AttachmentPicker
+            field={field}
+            value={value as AttachmentValue | null | undefined}
+            onChange={onChange}
+          />
+        </FormField>
+      );
   }
 }
 
@@ -389,4 +413,113 @@ function coerceId(s: string, target: { idStrategy: string } | null | undefined):
     if (Number.isFinite(n)) return n;
   }
   return s;
+}
+
+const MAX_INLINE_MB = 50;
+
+function AttachmentPicker({
+  field,
+  value,
+  onChange,
+}: {
+  field: FileField | ImageField;
+  value: AttachmentValue | null | undefined;
+  onChange: (v: AttachmentValue | null) => void;
+}) {
+  const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [warn, setWarn] = useState<string | null>(null);
+
+  const url = useAttachmentUrl(value);
+  const isImage = field.type === 'image';
+  const thumbSize = field.type === 'image' ? field.thumbnailSize ?? 'm' : 'm';
+
+  const onPick = (file: File) => {
+    if (file.size > MAX_INLINE_MB * 1024 * 1024) {
+      setWarn(t('attachment.tooLarge', { limit: MAX_INLINE_MB }));
+      return;
+    }
+    setWarn(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      onChange({
+        name: file.name,
+        size: file.size,
+        mime: file.type || 'application/octet-stream',
+        data: dataUrl,
+        pending: true,
+      });
+    };
+    reader.onerror = () => setWarn('read error');
+    reader.readAsDataURL(file);
+  };
+
+  const onClear = () => {
+    setWarn(null);
+    onChange(null);
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const onTrigger = () => inputRef.current?.click();
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept={field.acceptMime || (isImage ? 'image/*' : undefined)}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPick(f);
+        }}
+      />
+      <div className="flex items-start gap-3">
+        {isImage ? (
+          <ImageThumb url={url} size={thumbSize === 's' ? 'm' : thumbSize} />
+        ) : (
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground">
+            <Paperclip className="h-5 w-5" />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-1 min-w-0">
+          {value ? (
+            <>
+              <span className="truncate text-sm font-medium">{value.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {formatBytes(value.size)} · {value.mime || '—'}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground italic">
+              {isImage ? t('attachment.emptyImage') : t('attachment.empty')}
+            </span>
+          )}
+          <div className="mt-1 flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onTrigger}>
+              <Upload className="h-3.5 w-3.5" />
+              {value
+                ? t('attachment.replace')
+                : isImage
+                ? t('attachment.chooseImage')
+                : t('attachment.choose')}
+            </Button>
+            {value && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClear}
+              >
+                <X className="h-3.5 w-3.5" />
+                {t('attachment.clear')}
+              </Button>
+            )}
+          </div>
+          {warn && <span className="text-xs text-destructive">{warn}</span>}
+        </div>
+      </div>
+    </div>
+  );
 }

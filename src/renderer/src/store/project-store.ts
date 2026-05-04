@@ -11,6 +11,7 @@ import type {
   StorageFormat,
 } from '@shared/schema';
 import { defaultFieldFor, emptyEntity } from '@shared/schema';
+import { bumpAttachmentCache } from '@/lib/attachments';
 
 type Mode = 'schema' | 'data';
 
@@ -322,6 +323,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const { schema, projectPath, data } = get();
     if (!schema || !projectPath) throw new Error('No project open');
     const saved = await window.api.saveDocument(projectPath, schema, entityName, doc);
+    bumpAttachmentCache();
     const list = (data[entityName] ?? []).slice();
     const idx = list.findIndex((d) => String(d.id) === String(saved.id));
     if (idx >= 0) list[idx] = saved;
@@ -338,6 +340,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const { schema, projectPath, data } = get();
     if (!schema || !projectPath) return;
     await window.api.deleteDocument(projectPath, schema, entityName, id);
+    bumpAttachmentCache();
     const list = (data[entityName] ?? []).filter((d) => String(d.id) !== String(id));
     set({ data: { ...data, [entityName]: list } });
   },

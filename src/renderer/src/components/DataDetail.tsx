@@ -1,7 +1,17 @@
+import { Paperclip } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { useProjectStore } from '@/store/project-store';
-import type { AppDocument, Field, ID, RelationField } from '@shared/schema';
+import type {
+  AppDocument,
+  AttachmentValue,
+  Field,
+  FileField,
+  ID,
+  ImageField,
+  RelationField,
+} from '@shared/schema';
 import { formatId, relationLabel } from '@/lib/utils';
+import { formatBytes, useAttachmentUrl } from '@/lib/attachments';
 import { useI18n } from '@/i18n/provider';
 
 export function DataDetail({
@@ -88,9 +98,93 @@ function DetailValue({ value, field }: { value: unknown; field: Field }) {
       );
     case 'relation':
       return <RelationDisplay field={field} value={value} />;
+    case 'image':
+      return <ImageDisplay field={field} value={value as AttachmentValue} />;
+    case 'file':
+      return <FileDisplay field={field} value={value as AttachmentValue} />;
     default:
       return <>{String(value)}</>;
   }
+}
+
+function ImageDisplay({
+  value,
+}: {
+  field: ImageField;
+  value: AttachmentValue;
+}) {
+  const url = useAttachmentUrl(value);
+  return (
+    <div className="flex items-start gap-3">
+      <div className="overflow-hidden rounded-md border border-border bg-muted/40">
+        {url ? (
+          <img
+            src={url}
+            alt={value.name}
+            className="block max-h-[260px] max-w-[260px] object-contain"
+            draggable={false}
+          />
+        ) : (
+          <div className="h-32 w-32" />
+        )}
+      </div>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">name</dt>
+        <dd className="font-medium">{value.name}</dd>
+        <dt className="text-muted-foreground">size</dt>
+        <dd>{formatBytes(value.size)}</dd>
+        <dt className="text-muted-foreground">mime</dt>
+        <dd className="font-mono text-xs">{value.mime || '—'}</dd>
+        {value.path && (
+          <>
+            <dt className="text-muted-foreground">path</dt>
+            <dd className="font-mono text-xs">{value.path}</dd>
+          </>
+        )}
+        {value.data && !value.path && (
+          <>
+            <dt className="text-muted-foreground">storage</dt>
+            <dd>inline</dd>
+          </>
+        )}
+      </dl>
+    </div>
+  );
+}
+
+function FileDisplay({
+  value,
+}: {
+  field: FileField;
+  value: AttachmentValue;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground">
+        <Paperclip className="h-5 w-5" />
+      </div>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">name</dt>
+        <dd className="font-medium">{value.name}</dd>
+        <dt className="text-muted-foreground">size</dt>
+        <dd>{formatBytes(value.size)}</dd>
+        <dt className="text-muted-foreground">mime</dt>
+        <dd className="font-mono text-xs">{value.mime || '—'}</dd>
+        {value.path && (
+          <>
+            <dt className="text-muted-foreground">path</dt>
+            <dd className="font-mono text-xs">{value.path}</dd>
+          </>
+        )}
+        {value.data && !value.path && (
+          <>
+            <dt className="text-muted-foreground">storage</dt>
+            <dd>inline</dd>
+          </>
+        )}
+      </dl>
+    </div>
+  );
 }
 
 function RelationDisplay({

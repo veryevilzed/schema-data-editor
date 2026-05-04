@@ -140,6 +140,8 @@ const ru: Translations = {
   'fieldType.datetime': 'Дата и время',
   'fieldType.enum': 'Перечисление',
   'fieldType.relation': 'Связь',
+  'fieldType.file': 'Файл',
+  'fieldType.image': 'Изображение',
 
   // Enum options
   'enumOpts.values': 'Значения',
@@ -238,6 +240,31 @@ const ru: Translations = {
 
   // Errors
   'error.noProject': 'Нет открытого проекта',
+
+  // Attachments
+  'attachment.storage': 'Хранилище',
+  'attachment.storageHint':
+    'Где держать содержимое: рядом с документом или отдельным файлом.',
+  'attachment.storageInline': 'Внутри документа (base64)',
+  'attachment.storageExternal': 'Отдельным файлом',
+  'attachment.thumbSize': 'Размер миниатюры',
+  'attachment.thumbS': 'S — маленькая',
+  'attachment.thumbM': 'M — средняя',
+  'attachment.thumbB': 'B — большая',
+  'attachment.acceptMime': 'Допустимые MIME (через запятую)',
+  'attachment.acceptMimePlaceholder': 'image/*, application/pdf',
+  'attachment.choose': 'Выбрать файл',
+  'attachment.chooseImage': 'Выбрать изображение',
+  'attachment.replace': 'Заменить',
+  'attachment.clear': 'Убрать',
+  'attachment.empty': 'Файл не загружен',
+  'attachment.emptyImage': 'Изображение не загружено',
+  'attachment.preview': 'Превью',
+  'attachment.fileLabel': 'Файл',
+  'attachment.imageLabel': 'Изображение',
+  'attachment.size': 'Размер',
+  'attachment.mime': 'Тип',
+  'attachment.tooLarge': 'Файл слишком большой (>{limit} МБ).',
 };
 
 const en: Translations = {
@@ -367,6 +394,8 @@ const en: Translations = {
   'fieldType.datetime': 'Date & time',
   'fieldType.enum': 'Enum',
   'fieldType.relation': 'Relation',
+  'fieldType.file': 'File',
+  'fieldType.image': 'Image',
 
   'enumOpts.values': 'Values',
   'enumOpts.valuesHint': 'Press Enter to add.',
@@ -453,6 +482,31 @@ const en: Translations = {
   'confirm.deleteDocDesc': 'ID: {id}. This cannot be undone.',
 
   'error.noProject': 'No project open',
+
+  // Attachments
+  'attachment.storage': 'Storage',
+  'attachment.storageHint':
+    'Where to keep the binary: alongside the document or as a separate file.',
+  'attachment.storageInline': 'Inside the document (base64)',
+  'attachment.storageExternal': 'Separate file',
+  'attachment.thumbSize': 'Thumbnail size',
+  'attachment.thumbS': 'S — small',
+  'attachment.thumbM': 'M — medium',
+  'attachment.thumbB': 'B — big',
+  'attachment.acceptMime': 'Allowed MIME types (comma-separated)',
+  'attachment.acceptMimePlaceholder': 'image/*, application/pdf',
+  'attachment.choose': 'Pick a file',
+  'attachment.chooseImage': 'Pick an image',
+  'attachment.replace': 'Replace',
+  'attachment.clear': 'Clear',
+  'attachment.empty': 'No file uploaded',
+  'attachment.emptyImage': 'No image uploaded',
+  'attachment.preview': 'Preview',
+  'attachment.fileLabel': 'File',
+  'attachment.imageLabel': 'Image',
+  'attachment.size': 'Size',
+  'attachment.mime': 'Type',
+  'attachment.tooLarge': 'File too large (>{limit} MB).',
 };
 
 export const translations: Record<Locale, Translations> = { ru, en };

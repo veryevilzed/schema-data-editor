@@ -12,9 +12,15 @@ export type FieldType =
   | 'date'
   | 'datetime'
   | 'enum'
-  | 'relation';
+  | 'relation'
+  | 'file'
+  | 'image';
 
 export type RelationKind = 'one' | 'many';
+
+export type AttachmentStorage = 'inline' | 'external';
+
+export type ThumbnailSize = 's' | 'm' | 'b';
 
 export interface BaseField {
   type: FieldType;
@@ -69,6 +75,19 @@ export interface RelationField extends BaseField {
   default?: ID | ID[];
 }
 
+export interface FileField extends BaseField {
+  type: 'file';
+  storage: AttachmentStorage;
+  acceptMime?: string;
+}
+
+export interface ImageField extends BaseField {
+  type: 'image';
+  storage: AttachmentStorage;
+  thumbnailSize?: ThumbnailSize;
+  acceptMime?: string;
+}
+
 export type Field =
   | StringField
   | TextField
@@ -77,7 +96,18 @@ export type Field =
   | DateField
   | DatetimeField
   | EnumField
-  | RelationField;
+  | RelationField
+  | FileField
+  | ImageField;
+
+export interface AttachmentValue {
+  name: string;
+  size: number;
+  mime: string;
+  data?: string;
+  path?: string;
+  pending?: boolean;
+}
 
 export interface Entity {
   name: string;
@@ -106,6 +136,7 @@ export type DocumentValue =
   | null
   | ID
   | ID[]
+  | AttachmentValue
   | undefined;
 
 export interface AppDocument {
@@ -130,6 +161,8 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   datetime: 'Дата и время',
   enum: 'Перечисление',
   relation: 'Связь',
+  file: 'Файл',
+  image: 'Изображение',
 };
 
 export function emptySchema(): Schema {
@@ -170,5 +203,18 @@ export function defaultFieldFor(type: FieldType): Field {
       return { type: 'enum', values: [] };
     case 'relation':
       return { type: 'relation', target: '', kind: 'one' };
+    case 'file':
+      return { type: 'file', storage: 'external' };
+    case 'image':
+      return {
+        type: 'image',
+        storage: 'external',
+        thumbnailSize: 'm',
+        acceptMime: 'image/*',
+      };
   }
+}
+
+export function isAttachmentField(field: Field): field is FileField | ImageField {
+  return field.type === 'file' || field.type === 'image';
 }

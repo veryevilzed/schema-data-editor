@@ -7,17 +7,23 @@ import { v4 as uuidv4 } from 'uuid';
 import { IPC_CHANNELS } from '../shared/ipc';
 import {
   emptySchema,
+  isAttachmentField,
   type AppDocument,
+  type AttachmentValue,
   type ID,
   type ProjectSnapshot,
   type Schema,
 } from '../shared/schema';
 import {
+  deleteAttachment,
   deleteDocument,
+  deleteDocumentAttachments,
   migrateSchemaChange,
   readAllData,
+  readAttachment,
   readSchema,
   saveDocument,
+  writeAttachment,
   writeSchema,
 } from './storage';
 
@@ -151,6 +157,9 @@ function registerIpc(): void {
             : await allocateAutoIncId(folderPath, schema, entityName);
         finalDoc = { ...doc, id };
       }
+
+      finalDoc = await processAttachments(folderPath, schema, entityName, finalDoc);
+
       const saved = await saveDocument(folderPath, schema, entityName, finalDoc);
       return saved;
     },
@@ -166,6 +175,14 @@ function registerIpc(): void {
       docId: ID,
     ) => {
       await deleteDocument(folderPath, schema, entityName, docId);
+      await deleteDocumentAttachments(folderPath, schema, entityName, docId);
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.readAttachment,
+    async (_e, folderPath: string, schema: Schema, relPath: string) => {
+      return readAttachment(folderPath, schema, relPath);
     },
   );
 
@@ -189,6 +206,84 @@ function registerIpc(): void {
       nativeTheme.themeSource = theme;
     },
   );
+}
+
+async function processAttachments(
+  folderPath: string,
+  schema: Schema,
+  entityName: string,
+  doc: AppDocument,
+): Promise<AppDocument> {
+  const entity = schema.entities[entityName];
+  const existingDocs = await readAllData(folderPath, schema);
+  const oldDoc = (existingDocs[entityName] ?? []).find(
+    (d) => String(d.id) === String(doc.id),
+  );
+  const result: AppDocument = { ...doc };
+
+  for (const fname of entity.fieldOrder) {
+    const f = entity.fields[fname];
+    if (!isAttachmentField(f)) continue;
+    const newVal = doc[fname] as AttachmentValue | null | undefined;
+    const oldVal = oldDoc?.[fname] as AttachmentValue | null | undefined;
+
+    if (newVal === undefined || newVal === null) {
+      if (oldVal && oldVal.path) {
+        await deleteAttachment(folderPath, schema, oldVal.path);
+      }
+      result[fname] = null;
+      continue;
+    }
+
+    if (newVal.pending && newVal.data) {
+      const match = newVal.data.match(/^data:([^;]+);base64,(.+)$/s);
+      const mime = match ? match[1] : newVal.mime || 'application/octet-stream';
+      const base64Body = match ? match[2] : newVal.data;
+
+      if (f.storage === 'external') {
+        if (oldVal && oldVal.path) {
+          await deleteAttachment(folderPath, schema, oldVal.path);
+        }
+        const written = await writeAttachment(
+          folderPath,
+          schema,
+          entityName,
+          doc.id,
+          fname,
+          base64Body,
+          newVal.name,
+        );
+        result[fname] = {
+          name: newVal.name,
+          size: newVal.size || written.size,
+          mime,
+          path: written.relPath,
+        };
+      } else {
+        if (oldVal && oldVal.path) {
+          await deleteAttachment(folderPath, schema, oldVal.path);
+        }
+        result[fname] = {
+          name: newVal.name,
+          size: newVal.size,
+          mime,
+          data: `data:${mime};base64,${base64Body}`,
+        };
+      }
+      continue;
+    }
+
+    const cleaned: AttachmentValue = {
+      name: newVal.name,
+      size: newVal.size,
+      mime: newVal.mime,
+    };
+    if (newVal.path) cleaned.path = newVal.path;
+    if (newVal.data && !newVal.path) cleaned.data = newVal.data;
+    result[fname] = cleaned;
+  }
+
+  return result;
 }
 
 async function allocateAutoIncId(

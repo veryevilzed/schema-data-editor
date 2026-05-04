@@ -7,7 +7,10 @@ import {
   readSchema,
   saveDocument,
   deleteDocument,
+  deleteAttachment,
   migrateSchemaChange,
+  readAttachment,
+  writeAttachment,
   writeSchema,
 } from '../src/main/storage.ts';
 import { emptySchema, emptyEntity } from '../src/shared/schema.ts';
@@ -98,7 +101,48 @@ async function main(): Promise<void> {
   }
   console.log('schema reread OK, entities:', reread.entityOrder);
 
-  // 8. Cleanup
+  // 8. Attachments roundtrip
+  const png1x1 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+  const written = await writeAttachment(
+    tmp,
+    schema,
+    'User',
+    1,
+    'avatar',
+    png1x1,
+    'tiny.png',
+  );
+  console.log('attachment written:', written);
+  const readBack = await readAttachment(tmp, schema, written.relPath);
+  if (readBack !== png1x1) throw new Error('attachment roundtrip mismatch');
+  await deleteAttachment(tmp, schema, written.relPath);
+  const stillThere = await fs
+    .stat(path.join(tmp, schema.storage.dataDir, written.relPath))
+    .then(() => true, () => false);
+  if (stillThere) throw new Error('attachment was not deleted');
+  console.log('attachment delete OK');
+
+  // 9. Migration of dataDir preserves _attachments
+  const writtenAgain = await writeAttachment(
+    tmp,
+    schema,
+    'User',
+    1,
+    'avatar',
+    png1x1,
+    'tiny.png',
+  );
+  const prevForMove = JSON.parse(JSON.stringify(schema));
+  schema.storage.dataDir = 'data2';
+  await writeSchema(tmp, schema);
+  await migrateSchemaChange(tmp, prevForMove, schema);
+  const movedPath = path.join(tmp, 'data2', writtenAgain.relPath);
+  const exists = await fs.stat(movedPath).then(() => true, () => false);
+  if (!exists) throw new Error('attachment was not moved with dataDir');
+  console.log('dataDir migration preserves _attachments OK');
+
+  // 10. Cleanup
   await fs.rm(tmp, { recursive: true, force: true });
   console.log('\n✅ smoke storage test passed');
 }
