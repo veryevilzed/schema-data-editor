@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
+import { Archive, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
 import { useProjectStore } from '@/store/project-store';
+import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardTitle } from './ui/card';
 import { FormField, Input, Select } from './ui/input';
 import { EntityEditor } from './EntityEditor';
@@ -114,8 +115,46 @@ function ProjectSettingsCard() {
               </button>
             </div>
           </FormField>
+
+          <BackupRow />
         </CardContent>
       </div>
     </Card>
+  );
+}
+
+function BackupRow() {
+  const { t } = useI18n();
+  const projectPath = useProjectStore((s) => s.projectPath);
+  const schema = useProjectStore((s) => s.schema);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+
+  const onClick = async () => {
+    if (!projectPath || !schema) return;
+    setBusy(true);
+    setDone(null);
+    try {
+      const target = await window.api.createBackup(projectPath, schema);
+      if (target) setDone(target);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <FormField label={t('backup.title')} hint={t('backup.desc')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="md" onClick={onClick} disabled={busy}>
+          <Archive className="h-4 w-4" />
+          {t('backup.button')}
+        </Button>
+        {done && (
+          <span className="text-xs text-muted-foreground truncate">
+            {t('backup.success', { path: done })}
+          </span>
+        )}
+      </div>
+    </FormField>
   );
 }

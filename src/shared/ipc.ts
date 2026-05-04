@@ -1,4 +1,10 @@
-import type { AppDocument, ID, ProjectSnapshot, Schema } from './schema';
+import type {
+  AppDocument,
+  AttachmentValue,
+  ID,
+  ProjectSnapshot,
+  Schema,
+} from './schema';
 
 export interface PickFolderOptions {
   title?: string;
@@ -32,6 +38,12 @@ export interface IpcApi {
     schema: Schema,
     relPath: string,
   ): Promise<string>;
+  downloadAttachment(
+    folderPath: string,
+    schema: Schema,
+    value: AttachmentValue,
+  ): Promise<string | null>;
+  createBackup(folderPath: string, schema: Schema): Promise<string | null>;
 }
 
 export const IPC_CHANNELS = {
@@ -44,4 +56,6 @@ export const IPC_CHANNELS = {
   getRecentProjects: 'project:recent',
   setTheme: 'app:set-theme',
   readAttachment: 'project:read-attachment',
+  downloadAttachment: 'project:download-attachment',
+  createBackup: 'project:backup',
 } as const;

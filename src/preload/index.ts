@@ -24,6 +24,10 @@ const api: IpcApi = {
   setTheme: (theme) => ipcRenderer.invoke(IPC_CHANNELS.setTheme, theme),
   readAttachment: (folderPath, schema, relPath) =>
     ipcRenderer.invoke(IPC_CHANNELS.readAttachment, folderPath, schema, relPath),
+  downloadAttachment: (folderPath, schema, value) =>
+    ipcRenderer.invoke(IPC_CHANNELS.downloadAttachment, folderPath, schema, value),
+  createBackup: (folderPath, schema) =>
+    ipcRenderer.invoke(IPC_CHANNELS.createBackup, folderPath, schema),
 };
 
 contextBridge.exposeInMainWorld('api', api);

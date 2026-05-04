@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createWriteStream } from 'node:fs';
+import archiver from 'archiver';
 
 import {
   readAllData,
@@ -142,7 +144,27 @@ async function main(): Promise<void> {
   if (!exists) throw new Error('attachment was not moved with dataDir');
   console.log('dataDir migration preserves _attachments OK');
 
-  // 10. Cleanup
+  // 10. Backup zip
+  const zipPath = path.join(tmp, 'backup-test.zip');
+  await new Promise<void>((resolve, reject) => {
+    const out = createWriteStream(zipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    out.on('close', () => resolve());
+    out.on('error', reject);
+    archive.on('error', reject);
+    archive.pipe(out);
+    archive.file(path.join(tmp, 'schema.json'), { name: 'schema.json' });
+    archive.directory(
+      path.join(tmp, schema.storage.dataDir),
+      schema.storage.dataDir,
+    );
+    archive.finalize();
+  });
+  const zipStat = await fs.stat(zipPath);
+  if (zipStat.size < 100) throw new Error('backup zip suspiciously small');
+  console.log('backup zip OK,', zipStat.size, 'bytes');
+
+  // 11. Cleanup
   await fs.rm(tmp, { recursive: true, force: true });
   console.log('\n✅ smoke storage test passed');
 }

@@ -823,25 +823,33 @@ function ImageCellValue({
   const url = useAttachmentUrl(value);
   if (!value) return <span className="text-muted-foreground">—</span>;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" title={value.name}>
       <ImageThumb url={url} size={field.thumbnailSize ?? 'm'} alt={value.name} />
-      <span className="truncate text-xs text-muted-foreground">{value.name}</span>
+      {!field.hideNameInList && (
+        <span className="truncate text-xs text-muted-foreground">{value.name}</span>
+      )}
     </div>
   );
 }
 
 function FileCellValue({
+  field,
   value,
 }: {
   field: FileField;
   value: AttachmentValue | null | undefined;
 }) {
   if (!value) return <span className="text-muted-foreground">—</span>;
+  const tooltip = `${value.name} · ${formatBytes(value.size)} · ${value.mime || '—'}`;
+  if (field.hideNameInList) {
+    return (
+      <span className="inline-flex items-center" title={tooltip}>
+        <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+      </span>
+    );
+  }
   return (
-    <span
-      className="inline-flex items-center gap-1.5"
-      title={`${value.name} · ${formatBytes(value.size)} · ${value.mime || '—'}`}
-    >
+    <span className="inline-flex items-center gap-1.5" title={tooltip}>
       <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="truncate font-medium">{value.name}</span>
       <span className="text-xs text-muted-foreground">{formatBytes(value.size)}</span>

@@ -79,6 +79,7 @@ export interface FileField extends BaseField {
   type: 'file';
   storage: AttachmentStorage;
   acceptMime?: string;
+  hideNameInList?: boolean;
 }
 
 export interface ImageField extends BaseField {
@@ -86,6 +87,7 @@ export interface ImageField extends BaseField {
   storage: AttachmentStorage;
   thumbnailSize?: ThumbnailSize;
   acceptMime?: string;
+  hideNameInList?: boolean;
 }
 
 export type Field =

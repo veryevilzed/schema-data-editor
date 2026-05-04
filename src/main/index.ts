@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain, dialog, nativeTheme } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
+import archiver from 'archiver';
 
 import { IPC_CHANNELS } from '../shared/ipc';
 import {
@@ -186,6 +188,51 @@ function registerIpc(): void {
     },
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.downloadAttachment,
+    async (_e, folderPath: string, schema: Schema, value: AttachmentValue) => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (!win) return null;
+      const result = await dialog.showSaveDialog(win, {
+        defaultPath: value.name || 'download',
+      });
+      if (result.canceled || !result.filePath) return null;
+      const target = result.filePath;
+      if (value.path) {
+        const src = path.join(folderPath, schema.storage.dataDir, value.path);
+        await fs.copyFile(src, target);
+      } else if (value.data) {
+        const m = value.data.match(/^data:[^;]+;base64,(.+)$/s);
+        const base64 = m ? m[1] : value.data;
+        await fs.writeFile(target, Buffer.from(base64, 'base64'));
+      } else {
+        return null;
+      }
+      return target;
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.createBackup,
+    async (_e, folderPath: string, schema: Schema) => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (!win) return null;
+      const baseName = path.basename(folderPath.replace(/[\\/]+$/, '')) || 'project';
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const defaultName = `${baseName}-${stamp}.zip`;
+      const result = await dialog.showSaveDialog(win, {
+        defaultPath: path.join(path.dirname(folderPath), defaultName),
+        filters: [{ name: 'ZIP archive', extensions: ['zip'] }],
+      });
+      if (result.canceled || !result.filePath) return null;
+      const target = result.filePath;
+      await createBackupZip(folderPath, schema, target);
+      return target;
+    },
+  );
+
   ipcMain.handle(IPC_CHANNELS.getRecentProjects, async () => {
     const list = await getRecentProjects();
     const checked: string[] = [];
@@ -206,6 +253,38 @@ function registerIpc(): void {
       nativeTheme.themeSource = theme;
     },
   );
+}
+
+async function createBackupZip(
+  folderPath: string,
+  schema: Schema,
+  targetZip: string,
+): Promise<void> {
+  await fs.mkdir(path.dirname(targetZip), { recursive: true });
+
+  const schemaPath = path.join(folderPath, 'schema.json');
+  const dataDir = path.join(folderPath, schema.storage.dataDir);
+  const hasSchema = await fs
+    .access(schemaPath)
+    .then(() => true, () => false);
+  const hasDataDir = await fs.access(dataDir).then(() => true, () => false);
+
+  const out = createWriteStream(targetZip);
+  const archive = archiver('zip', { zlib: { level: 9 } });
+
+  return new Promise<void>((resolve, reject) => {
+    out.on('close', resolve);
+    out.on('error', reject);
+    archive.on('error', reject);
+    archive.on('warning', (err) => {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') reject(err);
+    });
+    archive.pipe(out);
+
+    if (hasSchema) archive.file(schemaPath, { name: 'schema.json' });
+    if (hasDataDir) archive.directory(dataDir, schema.storage.dataDir);
+    archive.finalize();
+  });
 }
 
 async function processAttachments(

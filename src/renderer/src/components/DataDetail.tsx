@@ -1,4 +1,6 @@
-import { Paperclip } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Paperclip } from 'lucide-react';
+import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { useProjectStore } from '@/store/project-store';
 import type {
@@ -128,26 +130,29 @@ function ImageDisplay({
           <div className="h-32 w-32" />
         )}
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">name</dt>
-        <dd className="font-medium">{value.name}</dd>
-        <dt className="text-muted-foreground">size</dt>
-        <dd>{formatBytes(value.size)}</dd>
-        <dt className="text-muted-foreground">mime</dt>
-        <dd className="font-mono text-xs">{value.mime || '—'}</dd>
-        {value.path && (
-          <>
-            <dt className="text-muted-foreground">path</dt>
-            <dd className="font-mono text-xs">{value.path}</dd>
-          </>
-        )}
-        {value.data && !value.path && (
-          <>
-            <dt className="text-muted-foreground">storage</dt>
-            <dd>inline</dd>
-          </>
-        )}
-      </dl>
+      <div className="flex flex-col gap-3">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <dt className="text-muted-foreground">name</dt>
+          <dd className="font-medium">{value.name}</dd>
+          <dt className="text-muted-foreground">size</dt>
+          <dd>{formatBytes(value.size)}</dd>
+          <dt className="text-muted-foreground">mime</dt>
+          <dd className="font-mono text-xs">{value.mime || '—'}</dd>
+          {value.path && (
+            <>
+              <dt className="text-muted-foreground">path</dt>
+              <dd className="font-mono text-xs">{value.path}</dd>
+            </>
+          )}
+          {value.data && !value.path && (
+            <>
+              <dt className="text-muted-foreground">storage</dt>
+              <dd>inline</dd>
+            </>
+          )}
+        </dl>
+        <DownloadButton value={value} />
+      </div>
     </div>
   );
 }
@@ -163,27 +168,52 @@ function FileDisplay({
       <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground">
         <Paperclip className="h-5 w-5" />
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">name</dt>
-        <dd className="font-medium">{value.name}</dd>
-        <dt className="text-muted-foreground">size</dt>
-        <dd>{formatBytes(value.size)}</dd>
-        <dt className="text-muted-foreground">mime</dt>
-        <dd className="font-mono text-xs">{value.mime || '—'}</dd>
-        {value.path && (
-          <>
-            <dt className="text-muted-foreground">path</dt>
-            <dd className="font-mono text-xs">{value.path}</dd>
-          </>
-        )}
-        {value.data && !value.path && (
-          <>
-            <dt className="text-muted-foreground">storage</dt>
-            <dd>inline</dd>
-          </>
-        )}
-      </dl>
+      <div className="flex flex-1 flex-col gap-2">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          <dt className="text-muted-foreground">name</dt>
+          <dd className="font-medium">{value.name}</dd>
+          <dt className="text-muted-foreground">size</dt>
+          <dd>{formatBytes(value.size)}</dd>
+          <dt className="text-muted-foreground">mime</dt>
+          <dd className="font-mono text-xs">{value.mime || '—'}</dd>
+          {value.path && (
+            <>
+              <dt className="text-muted-foreground">path</dt>
+              <dd className="font-mono text-xs">{value.path}</dd>
+            </>
+          )}
+          {value.data && !value.path && (
+            <>
+              <dt className="text-muted-foreground">storage</dt>
+              <dd>inline</dd>
+            </>
+          )}
+        </dl>
+        <DownloadButton value={value} />
+      </div>
     </div>
+  );
+}
+
+function DownloadButton({ value }: { value: AttachmentValue }) {
+  const { t } = useI18n();
+  const projectPath = useProjectStore((s) => s.projectPath);
+  const schema = useProjectStore((s) => s.schema);
+  const [busy, setBusy] = useState(false);
+  if (!projectPath || !schema) return null;
+  const onClick = async () => {
+    setBusy(true);
+    try {
+      await window.api.downloadAttachment(projectPath, schema, value);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button variant="outline" size="sm" onClick={onClick} disabled={busy} className="self-start">
+      <Download className="h-3.5 w-3.5" />
+      {t('attachment.download')}
+    </Button>
   );
 }
 

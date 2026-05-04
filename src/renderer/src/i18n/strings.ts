@@ -265,6 +265,16 @@ const ru: Translations = {
   'attachment.size': 'Размер',
   'attachment.mime': 'Тип',
   'attachment.tooLarge': 'Файл слишком большой (>{limit} МБ).',
+  'attachment.hideName': 'Скрыть имя в таблице',
+  'attachment.hideNameHint':
+    'В таблице будет видна только миниатюра/иконка без имени файла.',
+  'attachment.download': 'Скачать',
+
+  // Backup
+  'backup.title': 'Резервная копия',
+  'backup.desc': 'Запаковать схему и данные в ZIP-архив.',
+  'backup.button': 'Создать архив',
+  'backup.success': 'Архив сохранён: {path}',
 };
 
 const en: Translations = {
@@ -507,6 +517,16 @@ const en: Translations = {
   'attachment.size': 'Size',
   'attachment.mime': 'Type',
   'attachment.tooLarge': 'File too large (>{limit} MB).',
+  'attachment.hideName': 'Hide name in table',
+  'attachment.hideNameHint':
+    'The table cell will show only the thumbnail/icon, without the file name.',
+  'attachment.download': 'Download',
+
+  // Backup
+  'backup.title': 'Backup',
+  'backup.desc': 'Pack the schema and data into a ZIP archive.',
+  'backup.button': 'Create archive',
+  'backup.success': 'Archive saved: {path}',
 };
 
 export const translations: Record<Locale, Translations> = { ru, en };

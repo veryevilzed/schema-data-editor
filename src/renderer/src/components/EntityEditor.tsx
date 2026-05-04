@@ -833,6 +833,18 @@ function AttachmentOptions({
           }
         />
       </FormField>
+      <label
+        className="md:col-span-2 inline-flex items-center gap-2 text-sm"
+        title={t('attachment.hideNameHint')}
+      >
+        <Checkbox
+          checked={field.hideNameInList ?? false}
+          onChange={(e) =>
+            onChange({ hideNameInList: e.target.checked || undefined })
+          }
+        />
+        <span>{t('attachment.hideName')}</span>
+      </label>
     </div>
   );
 }
