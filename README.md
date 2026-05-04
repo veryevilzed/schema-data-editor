@@ -4,6 +4,20 @@ A local desktop utility for editing a JSON schema and its data with relations.
 Built with Electron + Vite + React + TypeScript. Designed for small,
 file-based datasets you want to keep under version control alongside code.
 
+![Welcome screen — open or create a project.](screenshots/welcome.png)
+
+## Screenshots
+
+Schema editor — entities, fields, per-field options (storage, validations,
+defaults, descriptions):
+
+![Schema editor](screenshots/schema-editor.png)
+
+Data view — table with per-column filters, tri-state sort, search, image
+thumbnails and attachment links:
+
+![Data view](screenshots/data-view.png)
+
 ## What it does
 
 You point the app at a folder. It writes a `schema.json` describing your
